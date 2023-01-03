@@ -345,7 +345,7 @@ def download_announcement_files(announcements, course_name):
 						failed_downloads.append("Announcement:  "+course_name + ': ' + file_name)
 						printenc("Could not create file")
 			except KeyError as e:
-				printenc(f">> KeyError {e}")
+				printenc(f">> KeyError {e} for {material}")
 	return downloaded, skipped_downloads, failed_downloads
 
 
@@ -379,7 +379,7 @@ def download_workmater_files(workmaterials, course_name):
 						failed_downloads.append("WorkMaterial:  "+course_name + ': ' + file_name)
 						printenc("Could not create file")
 			except KeyError as e:
-				continue
+				printenc(f">> KeyError {e} for {material}")
 	return downloaded, skipped_downloads, failed_downloads
 
 
@@ -414,7 +414,7 @@ def download_works_files(works, course_name):
 						printenc("Could not create file")
 
 			except KeyError as e:
-				continue
+				printenc(f">> KeyError {e} for {material}")
 	return downloaded, skipped_downloads, failed_downloads
 
 def getDirents(dirName):
