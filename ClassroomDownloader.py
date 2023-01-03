@@ -256,10 +256,10 @@ def download_file(file_id, file_name, course_name):
 			token.write(credentials.to_json())
 	
 	service = build('drive', 'v3', credentials=credentials)
-	file_ = service.files().get(fileId=file_id).execute()
-	mimetype = file_['mimeType']
-	mtype = resolveGoogleMime(mimetype)
 	try:
+		file_ = service.files().get(fileId=file_id, fields="*").execute()
+		mimetype = file_['mimeType']
+		mtype = resolveGoogleMime(mimetype)
 		# try export_media for google mime-types
 		if mtype is not None:
 			mimetype = mtype[0]
@@ -285,7 +285,7 @@ def download_file(file_id, file_name, course_name):
 		# retry with lfs
 		if error.error_details[0]['reason'] == "exportSizeLimitExceeded" and mtype is not None:
 			printenc(f'>> Download failed, please check FAILED_DOWNLOADS.txt')
-			file_exportlinks = file_['exportLinks']
+			file_exportlinks = file_['exportLinks'].values()
 			failed_downloads = file_name + ': [' + ', '.join(file_exportlinks) + ']'
 
 		else:
@@ -294,6 +294,26 @@ def download_file(file_id, file_name, course_name):
 
 	return failed_downloads
 
+def extract_id(link):
+	return link[link.rfind('/d/')+3:link.rfind('/')]
+def extract_exportId(link):
+	return link[link.rfind('?id=')+4:link.rfind('&')]
+
+def resolve_idAndName(material):
+	file_id = material['driveFile']['driveFile']['id']
+	file_name = material['driveFile']['driveFile']['title']
+
+	# using alterative link on templates
+	if (file_name[0:10] == "[Template]"):
+			file_altern_link = material['driveFile']['driveFile']['alternateLink']
+			file_id = extract_id(file_altern_link)
+			printenc(f"<< Downloading {file_id} from {file_altern_link} instead")
+
+	file_name = resolveFileName(file_id)
+	if file_name is None:
+		file_name = material['driveFile']['driveFile']['title']
+
+	return file_id, file_name
 
 def download_announcement_files(announcements, course_name):
 	announcement_list = announcements.keys()
@@ -305,15 +325,14 @@ def download_announcement_files(announcements, course_name):
 
 		for announcement in announcements['announcements']:
 			try:  # if this announcements contain a file then do this
-				for val in announcement['materials']:
-					file_id = val['driveFile']['driveFile']['id']
-					file_name = resolveFileName(file_id)
-					if file_name is None:
-						file_name = val['driveFile']['driveFile']['title']
+				for material in announcement['materials']:
+					
+					file_id, file_name = resolve_idAndName(material)
 
 					path_str = os.path.join(MODOUTFOLDER, course_name, file_name)
+					
 					if file_name not in existing_files:
-						printenc("DOWNLOADING ", file_name)
+						printenc("DOWNLOADING Announcement:", file_name)
 						dllfail = download_file(file_id, file_name, course_name)
 						if dllfail is None:
 							downloaded.append("Announcement:  "+course_name + ': ' + file_name)
@@ -326,7 +345,7 @@ def download_announcement_files(announcements, course_name):
 						failed_downloads.append("Announcement:  "+course_name + ': ' + file_name)
 						printenc("Could not create file")
 			except KeyError as e:
-				continue
+				printenc(f">> KeyError {e}")
 	return downloaded, skipped_downloads, failed_downloads
 
 
@@ -340,16 +359,14 @@ def download_workmater_files(workmaterials, course_name):
 
 		for material in workmaterials['courseWorkMaterial']:
 			try:  # if this material contains a file then do this
-				for val in material['materials']:
-					file_id = val['driveFile']['driveFile']['id']
-					file_name = resolveFileName(file_id)
-					if file_name is None:
-						file_name = val['driveFile']['driveFile']['title']
+				for material in material['materials']:
+					
+					file_id, file_name = resolve_idAndName(material)
 
 					path_str = os.path.join(MODOUTFOLDER, course_name, file_name)
 
 					if file_name not in existing_files:
-						printenc("DOWNLOADING ", file_name)
+						printenc("DOWNLOADING Material:", file_name)
 						dllfail = download_file(file_id, file_name, course_name)
 						if dllfail is None:
 							downloaded.append("WorkMaterial:  "+course_name + ': ' + file_name)
@@ -376,18 +393,14 @@ def download_works_files(works, course_name):
 
 		for work in works['courseWork']:
 			try:  # if this announcements contain a file then do this
-				for val in work['materials']:
-					file_id = val['driveFile']['driveFile']['id']
-					file_name = val['driveFile']['driveFile']['title']
+				for material in work['materials']:
 					
-					file_name = resolveFileName(file_id)
-					if file_name is None:
-						file_name = val['driveFile']['driveFile']['title']
+					file_id, file_name = resolve_idAndName(material)
 
 					path_str = os.path.join(MODOUTFOLDER, course_name, file_name)
 					
 					if file_name not in existing_files:
-						printenc("DOWNLOADING ", file_name)
+						printenc("DOWNLOADING Work:", file_name)
 						dllfail = download_file(file_id, file_name, course_name)
 						if dllfail is None:
 							downloaded.append("Work:  "+course_name + ': ' + file_name)
