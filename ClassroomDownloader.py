@@ -379,11 +379,6 @@ def download_works_files(works, course_name):
 				for val in work['materials']:
 					file_id = val['driveFile']['driveFile']['id']
 					file_name = val['driveFile']['driveFile']['title']
-
-					# using alterative link on templates
-					if (file_name[0:10] == "[Template]"):
-						file_altern_link = val['driveFile']['driveFile']['alternateLink']
-						file_id = file_altern_link[file_altern_link.find('=')+1:]
 					
 					file_name = resolveFileName(file_id)
 					if file_name is None:
