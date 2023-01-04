@@ -177,7 +177,7 @@ def main():
 		course_id = course['id']
 		printenc("\n"+"#"*(len(course_name)+20))
 		printenc(f"Verifying files for {course_name}")
-		printenc("#"*(len(course_name)+22)+"\n")
+		printenc("#"*(len(course_name)+20)+"\n")
 		if not (os.path.exists(MODOUTFOLDER + course_name)):
 			printenc(">> Course not downloaded!")
 			continue
