@@ -212,7 +212,7 @@ def main():
 
 		# REPORT
 		if len(ver_downloaded_files)>0 or len(ver_failed_files)>0:
-			printenc(">> Retried downloading: " + ver_downloaded_files)
+			printenc(">> Retried downloading: ")
 			pprintenc(ver_downloaded_files, width=200)
 			if len(ver_skipped_files) < 1:
 				printenc(">> Skiped anomaly, no files skipped")
