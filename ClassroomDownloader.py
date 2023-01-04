@@ -22,6 +22,7 @@
 #
 # - OAuth credentials file named credentials.json in root folder
 #
+# - on windows enable case sensitivity for backup folder like so: 'fsutil.exe file setCaseSensitiveInfo <path> enable'
 
 
 from __future__ import print_function
@@ -108,6 +109,7 @@ def main():
 	downloaded_files = list()
 	skipped_files = list()
 	failed_files = list()
+	course_dls = list()
 
 	for course in courses['courses']:
 
@@ -123,17 +125,19 @@ def main():
 		workmaterials = service.courses().courseWorkMaterials().list(courseId=course_id).execute()
 		work = service.courses().courseWork().list(courseId=course_id).execute()
 
-		download, skipped, failed = download_announcement_files(announcements, course_name)
+		course_dls.clear()
+
+		download, skipped, failed = download_announcement_files(announcements, course_name, course_dls)
 		downloaded_files = downloaded_files + download
 		skipped_files = skipped_files + skipped
 		failed_files = failed_files + failed
 		
-		download, skipped, failed = download_workmater_files(workmaterials, course_name)
+		download, skipped, failed = download_workmater_files(workmaterials, course_name, course_dls)
 		downloaded_files = downloaded_files + download
 		skipped_files = skipped_files + skipped
 		failed_files = failed_files + failed
 
-		download, skipped, failed = download_works_files(work, course_name)
+		download, skipped, failed = download_works_files(work, course_name, course_dls)
 		downloaded_files = downloaded_files + download
 		skipped_files = skipped_files + skipped
 		failed_files = failed_files + failed
@@ -224,11 +228,11 @@ def resolveFileName(file_id):
 	extr = resolveGoogleMime(file_['mimeType'])
 	if extr is None:
 		ext = mimetypes.guess_extension(file_['mimeType'])
-		guess = mimetypes.guess_type('a'+os.path.splitext(filename)[-1])[0]
+		guess = mimetypes.guess_type('a'+os.path.splitext(filename)[1])[0]
 		if ext is not None and (guess is None or guess != file_['mimeType']):
 			return filename + ext
 	else:
-		return ''.join(os.path.splitext(filename)[:-1]) + extr[1]
+		return ''.join(os.path.splitext(filename)[0]) + extr[1]
 
 	return filename
 
@@ -315,7 +319,18 @@ def resolve_idAndName(material):
 
 	return file_id, file_name
 
-def download_announcement_files(announcements, course_name):
+def fixFilename(file_name, course_dls):
+	if file_name not in course_dls:
+		return file_name
+	
+	file_name_new =  os.path.splitext(file_name)[0] + "({})" + os.path.splitext(file_name)[1]
+	iterator = 2
+	while file_name_new.format(iterator) in course_dls:
+		iterator = iterator + 1
+
+	return file_name_new.format(iterator)
+
+def download_announcement_files(announcements, course_name, course_dls):
 	announcement_list = announcements.keys()
 	downloaded = list()
 	failed_downloads = list()
@@ -331,6 +346,9 @@ def download_announcement_files(announcements, course_name):
 
 					path_str = os.path.join(MODOUTFOLDER, course_name, file_name)
 					
+					file_name = fixFilename(file_name, course_dls)
+					course_dls.append(file_name)
+
 					if file_name not in existing_files:
 						printenc("DOWNLOADING Announcement:", file_name)
 						dllfail = download_file(file_id, file_name, course_name)
@@ -349,7 +367,7 @@ def download_announcement_files(announcements, course_name):
 	return downloaded, skipped_downloads, failed_downloads
 
 
-def download_workmater_files(workmaterials, course_name):
+def download_workmater_files(workmaterials, course_name, course_dls):
 	workmater_list = workmaterials.keys()
 	downloaded = list()
 	failed_downloads = list()
@@ -364,6 +382,9 @@ def download_workmater_files(workmaterials, course_name):
 					file_id, file_name = resolve_idAndName(material)
 
 					path_str = os.path.join(MODOUTFOLDER, course_name, file_name)
+
+					file_name = fixFilename(file_name, course_dls)
+					course_dls.append(file_name)
 
 					if file_name not in existing_files:
 						printenc("DOWNLOADING Material:", file_name)
@@ -383,7 +404,7 @@ def download_workmater_files(workmaterials, course_name):
 	return downloaded, skipped_downloads, failed_downloads
 
 
-def download_works_files(works, course_name):
+def download_works_files(works, course_name, course_dls):
 	works_list = works.keys()
 	downloaded = list()
 	failed_downloads = list()
@@ -399,6 +420,9 @@ def download_works_files(works, course_name):
 
 					path_str = os.path.join(MODOUTFOLDER, course_name, file_name)
 					
+					file_name = fixFilename(file_name, course_dls)
+					course_dls.append(file_name)
+
 					if file_name not in existing_files:
 						printenc("DOWNLOADING Work:", file_name)
 						dllfail = download_file(file_id, file_name, course_name)
