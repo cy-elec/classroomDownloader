@@ -56,16 +56,24 @@ print("Saving to: "+MODOUTFOLDER)
 
 INVALID_FILE = '<>:"/\|?* '
 
+print_enable = True
+
 def validify(filename):
 	for char in INVALID_FILE:
 		filename = filename.replace(char, '_')
 	return filename
 
 def printenc(*value, sep=' ', end='\n', file=sys.stdout, flush=False):
+	global print_enable
+	if not print_enable:
+		return
 	print(*[x.encode(file.encoding, errors='replace').decode(file.encoding,
 	      errors='replace') for x in value], sep=sep, end=end, file=file, flush=flush)
 
 def pprintenc(object, stream = sys.stdout, indent = 1, width = 80, depth = None, *, compact = False, sort_dicts = True, underscore_numbers = False):
+	global print_enable
+	if not print_enable:
+		return
 	pprint.pprint([x.encode(stream.encoding, errors='replace').decode(stream.encoding,
 	      errors='replace') for x in object], stream=stream, indent=indent, width=width, depth=depth, compact=compact, sort_dicts=sort_dicts, underscore_numbers=underscore_numbers)
 
@@ -76,7 +84,10 @@ def readBlacklist():
 		course_blacklist = fd.read().splitlines()
 	return course_blacklist
 
+
 def main():
+	global print_enable
+
 	os.makedirs(os.path.dirname(MODOUTFOLDER), exist_ok=True)
 
 	service = retrieve_service()
@@ -95,6 +106,9 @@ def main():
 
 	input("\nUpdate courses blacklist and press Enter to continue...")
 
+	# start timer
+	start_time = time.time()
+
 	courses = courses_.copy()		
 	course_blacklist = readBlacklist()
 	courses['courses'] = [x for x in courses_['courses'] if x['name'] not in course_blacklist]
@@ -111,6 +125,7 @@ def main():
 	failed_files = list()
 	course_dls = list()
 
+	# Download
 	for course in courses['courses']:
 
 		course_name = validify(course['name'])
@@ -118,7 +133,7 @@ def main():
 		printenc("\n"+"#"*(len(course_name)+22))
 		printenc(f"Downloading files for {course_name}")
 		printenc("#"*(len(course_name)+22)+"\n")
-		if not (os.path.exists(course_name)):
+		if not (os.path.exists(MODOUTFOLDER + course_name)):
 			os.makedirs(MODOUTFOLDER + course_name, exist_ok=True)
 
 		announcements = service.courses().announcements().list(courseId=course_id).execute()
@@ -149,6 +164,64 @@ def main():
 	with open(MODOUTFOLDER + 'FAILED_DOWNLOADS.txt', 'w', encoding='utf-8') as fdownloaded:
 		pprintenc(failed_files, fdownloaded, width=200)
 
+	printenc("\n\n\n\n\n")
+
+	ver_downloaded_files = list()
+	ver_skipped_files = list()
+	ver_failed_files = list()
+
+	# Confirm Download
+	for course in courses['courses']:
+
+		course_name = validify(course['name'])
+		course_id = course['id']
+		printenc("\n"+"#"*(len(course_name)+20))
+		printenc(f"Verifying files for {course_name}")
+		printenc("#"*(len(course_name)+22)+"\n")
+		if not (os.path.exists(MODOUTFOLDER + course_name)):
+			printenc(">> Course not downloaded!")
+			continue
+
+		# BLOCK PRINT
+		print_enable = False
+
+		announcements = service.courses().announcements().list(courseId=course_id).execute()
+		workmaterials = service.courses().courseWorkMaterials().list(
+			courseId=course_id).execute()
+		work = service.courses().courseWork().list(courseId=course_id).execute()
+
+		course_dls.clear()
+
+		download, skipped, failed = download_announcement_files(announcements, course_name, course_dls)
+		ver_downloaded_files = ver_downloaded_files + download
+		ver_skipped_files = ver_skipped_files + skipped
+		failed_files = failed_files + failed
+
+		download, skipped, failed = download_workmater_files(workmaterials, course_name, course_dls)
+		ver_downloaded_files = ver_downloaded_files + download
+		ver_skipped_files = ver_skipped_files + skipped
+		ver_failed_files = ver_failed_files + failed
+
+		download, skipped, failed = download_works_files(work, course_name, course_dls)
+		ver_downloaded_files = ver_downloaded_files + download
+		ver_skipped_files = ver_skipped_files + skipped
+		ver_failed_files = ver_failed_files + failed
+
+		# ENABLE PRINT
+		print_enable = True
+
+		# REPORT
+		if len(ver_downloaded_files)>0 or len(ver_failed_files)>0:
+			printenc(">> Retried downloading: " + ver_downloaded_files)
+			if len(ver_skipped_files) < 1:
+				printenc(">> Skiped anomaly, no files skipped")
+			printenc(">> Failed files: "+ ver_failed_files)
+		else:
+			printenc(">> No errors detected")
+	
+	# stop time
+	print(f'\nRuntime: {time.time()-start_time}')
+	tk.messagebox.showinfo("ClassroomDownloader by Felix Kröhnert", "Completed successfully in " + str(math.modf(time.time()-start_time)[1])+"s\nSaved to: "+MODOUTFOLDER)
 
 def retrieve_service():
 
@@ -458,7 +531,4 @@ def getDirents(dirName):
 
 
 if __name__ == '__main__':
-	start = time.time()
 	main()
-	tk.messagebox.showinfo("ClassroomDownloader by Felix Kröhnert", "Completed successfully in "+str(math.modf(time.time()-start)[1])+"s\nSaved to: "+MODOUTFOLDER)
-	print(f'\nRuntime: {time.time()-start}')
