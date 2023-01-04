@@ -192,17 +192,17 @@ def main():
 
 		course_dls.clear()
 
-		download, skipped, failed = download_announcement_files(announcements, course_name, course_dls)
+		download, skipped, failed = download_announcement_files(announcements, course_name, course_dls, False)
 		ver_downloaded_files = ver_downloaded_files + download
 		ver_skipped_files = ver_skipped_files + skipped
 		failed_files = failed_files + failed
 
-		download, skipped, failed = download_workmater_files(workmaterials, course_name, course_dls)
+		download, skipped, failed = download_workmater_files(workmaterials, course_name, course_dls, False)
 		ver_downloaded_files = ver_downloaded_files + download
 		ver_skipped_files = ver_skipped_files + skipped
 		ver_failed_files = ver_failed_files + failed
 
-		download, skipped, failed = download_works_files(work, course_name, course_dls)
+		download, skipped, failed = download_works_files(work, course_name, course_dls, False)
 		ver_downloaded_files = ver_downloaded_files + download
 		ver_skipped_files = ver_skipped_files + skipped
 		ver_failed_files = ver_failed_files + failed
@@ -309,7 +309,7 @@ def resolveFileName(file_id):
 
 	return filename
 
-def download_file(file_id, file_name, course_name):
+def download_file(file_id, file_name, course_name, download=True):
 
 	SCOPES = ['https://www.googleapis.com/auth/drive']
 	
@@ -345,19 +345,21 @@ def download_file(file_id, file_name, course_name):
 		else:
 			request = service.files().get_media(fileId=file_id)
 
-		fd = io.BytesIO()
-		downloader = MediaIoBaseDownload(fd, request)
-		
-		dl = False
-		while not dl:
-			status, dl = downloader.next_chunk()
-			printenc(f'Download {int(status.progress() * 100)}% - [{mimetype}]')
+		if download:
+			fd = io.BytesIO()
+			downloader = MediaIoBaseDownload(fd, request)
+			
+			dl = False
+			while not dl:
+				status, dl = downloader.next_chunk()
+				printenc(f'Download {int(status.progress() * 100)}% - [{mimetype}]')
 
-		fd.seek(0)
+			fd.seek(0)
 
-		with open(os.path.join(MODOUTFOLDER, course_name, file_name), 'wb') as fo:
-			fo.write(fd.read())
-			fo.close()
+			with open(os.path.join(MODOUTFOLDER, course_name, file_name), 'wb') as fo:
+				fo.write(fd.read())
+				fo.close()
+				
 	except HttpError as error:
 		# retry with lfs
 		if error.error_details[0]['reason'] == "exportSizeLimitExceeded" and mtype is not None:
@@ -403,7 +405,7 @@ def fixFilename(file_name, course_dls):
 
 	return file_name_new.format(iterator)
 
-def download_announcement_files(announcements, course_name, course_dls):
+def download_announcement_files(announcements, course_name, course_dls, download=True):
 	announcement_list = announcements.keys()
 	downloaded = list()
 	failed_downloads = list()
@@ -424,7 +426,7 @@ def download_announcement_files(announcements, course_name, course_dls):
 
 					if file_name not in existing_files:
 						printenc("DOWNLOADING Announcement:", file_name)
-						dllfail = download_file(file_id, file_name, course_name)
+						dllfail = download_file(file_id, file_name, course_name, download)
 						if dllfail is None:
 							downloaded.append("Announcement:  "+course_name + ': ' + file_name)
 						else:
@@ -440,7 +442,7 @@ def download_announcement_files(announcements, course_name, course_dls):
 	return downloaded, skipped_downloads, failed_downloads
 
 
-def download_workmater_files(workmaterials, course_name, course_dls):
+def download_workmater_files(workmaterials, course_name, course_dls, download=True):
 	workmater_list = workmaterials.keys()
 	downloaded = list()
 	failed_downloads = list()
@@ -461,7 +463,7 @@ def download_workmater_files(workmaterials, course_name, course_dls):
 
 					if file_name not in existing_files:
 						printenc("DOWNLOADING Material:", file_name)
-						dllfail = download_file(file_id, file_name, course_name)
+						dllfail = download_file(file_id, file_name, course_name, download)
 						if dllfail is None:
 							downloaded.append("WorkMaterial:  "+course_name + ': ' + file_name)
 						else:
@@ -477,7 +479,7 @@ def download_workmater_files(workmaterials, course_name, course_dls):
 	return downloaded, skipped_downloads, failed_downloads
 
 
-def download_works_files(works, course_name, course_dls):
+def download_works_files(works, course_name, course_dls, download=True):
 	works_list = works.keys()
 	downloaded = list()
 	failed_downloads = list()
@@ -498,7 +500,7 @@ def download_works_files(works, course_name, course_dls):
 
 					if file_name not in existing_files:
 						printenc("DOWNLOADING Work:", file_name)
-						dllfail = download_file(file_id, file_name, course_name)
+						dllfail = download_file(file_id, file_name, course_name, download)
 						if dllfail is None:
 							downloaded.append("Work:  "+course_name + ': ' + file_name)
 						else:
