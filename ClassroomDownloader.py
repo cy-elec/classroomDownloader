@@ -191,6 +191,10 @@ def main():
 		work = service.courses().courseWork().list(courseId=course_id).execute()
 
 		course_dls.clear()
+		ver_downloaded_files.clear()
+		ver_skipped_files.clear()
+		ver_failed_files.clear()
+
 
 		download, skipped, failed = download_announcement_files(announcements, course_name, course_dls, False)
 		ver_downloaded_files = ver_downloaded_files + download
