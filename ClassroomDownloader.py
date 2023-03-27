@@ -68,14 +68,14 @@ def printenc(*value, sep=' ', end='\n', file=sys.stdout, flush=False):
 	if not print_enable:
 		return
 	print(*[x.encode(file.encoding, errors='replace').decode(file.encoding,
-	      errors='replace') for x in value], sep=sep, end=end, file=file, flush=flush)
+		  errors='replace') for x in value], sep=sep, end=end, file=file, flush=flush)
 
 def pprintenc(object, stream = sys.stdout, indent = 1, width = 80, depth = None, *, compact = False, sort_dicts = True, underscore_numbers = False):
 	global print_enable
 	if not print_enable:
 		return
 	pprint.pprint([x.encode(stream.encoding, errors='replace').decode(stream.encoding,
-	      errors='replace') for x in object], stream=stream, indent=indent, width=width, depth=depth, compact=compact, sort_dicts=sort_dicts, underscore_numbers=underscore_numbers)
+		  errors='replace') for x in object], stream=stream, indent=indent, width=width, depth=depth, compact=compact, sort_dicts=sort_dicts, underscore_numbers=underscore_numbers)
 
 def readBlacklist():
 
@@ -246,7 +246,7 @@ def retrieve_service():
 
 	# If there are no (valid) credentials available, let the user log in.
 	if not credentials or not credentials.valid:
-		if credentials and credentials.expired and credentials.refresh_token:
+		if credentials and credentials.valid and credentials.expired and credentials.refresh_token:
 			credentials.refresh(Request())
 		else:
 			flow = InstalledAppFlow.from_client_secrets_file(
@@ -281,7 +281,7 @@ def resolveFileName(file_id):
 
 	# relogin
 	if not credentials or not credentials.valid:
-		if credentials and credentials.expired and credentials.refresh_token:
+		if credentials and credentials.valid and credentials.expired and credentials.refresh_token:
 			credentials.refresh(Request())
 		else:
 			flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
